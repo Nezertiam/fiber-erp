@@ -1,4 +1,50 @@
 basePath: /
+definitions:
+  domain.User:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      password:
+        type: string
+    type: object
+  handlers.GetUserResponseSuccess:
+    properties:
+      user:
+        $ref: '#/definitions/domain.User'
+    type: object
+  handlers.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.LoginResponseError:
+    properties:
+      message:
+        type: string
+    type: object
+  handlers.LoginResponseSuccess:
+    properties:
+      token:
+        type: string
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      confirmPassword:
+        type: string
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.RegisterResponseError:
+    properties:
+      message:
+        type: string
+    type: object
 host: localhost:8000
 info:
   contact:
@@ -12,7 +58,78 @@ info:
   termsOfService: http://swagger.io/terms/
   title: Fiber ERP API
   version: 0.0.0
-paths: {}
+paths:
+  /v1/api/protected/users/:id:
+    get:
+      description: Retrieve a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetUserResponseSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.RegisterResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.RegisterResponseError'
+      summary: Retrieve a user
+      tags:
+      - Users
+  /v1/api/public/auth/login:
+    post:
+      description: Generate token after providing good credentials
+      parameters:
+      - description: Credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponseSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.LoginResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.LoginResponseError'
+      summary: Generate token after providing good credentials
+      tags:
+      - Users
+  /v1/api/public/auth/register:
+    post:
+      description: Create a new user
+      parameters:
+      - description: Credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.RegisterResponseError'
+      summary: Create a new user
+      tags:
+      - Users
 schemes:
 - http
 swagger: "2.0"

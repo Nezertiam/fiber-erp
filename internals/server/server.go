@@ -36,16 +36,16 @@ func (s *Server) Initialize() {
 	v1.Get("/health", HealthCheck)
 
 	// PUBLIC ROUTES
-	public := v1.Group("/api/public")
-	userRoutes := public.Group("/auth")
-	userRoutes.Post("/login", s.userHandlers.Login) // /v1/auth/login
-	userRoutes.Post("/register", s.userHandlers.Register)
+	public := v1.Group("/api/public")                     // /v1/api/public
+	userRoutes := public.Group("/auth")                   // /v1/api/public/auth
+	userRoutes.Post("/login", s.userHandlers.Login)       // /v1/api/public/auth/login
+	userRoutes.Post("/register", s.userHandlers.Register) // /v1/api/public/auth/register
 
 	// PROTECTED ROUTES
 	jwt := s.middlewares.NewAuthMiddleware(os.Getenv("JWT_SECRET"))
-	protected := v1.Group("/api/protected", jwt)
-	userRoutes = protected.Group("/users")
-	userRoutes.Get("/{id}", s.userHandlers.GetUser)
+	protected := v1.Group("/api/protected", jwt)    // /v1/api/protected
+	userRoutes = protected.Group("/users")          // /v1/api/protected/users
+	userRoutes.Get("/{id}", s.userHandlers.GetUser) // /v1/api/protected/users/:id
 
 	err := app.Listen(":8000")
 	if err != nil {

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/nezertiam/fiber-erp/internals/core/domain"
 	"github.com/nezertiam/fiber-erp/internals/core/ports"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,52 +20,80 @@ func NewUserHandlers(userService ports.UserService) *UserHandlers {
 }
 
 // ------- LOGIN -------
-
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+type LoginResponseSuccess struct {
+	Token *string `json:"token"`
+}
+type LoginResponseError struct {
+	Message string `json:"message"`
+}
 
+// Login ... Generate token after providing good credentials
+// @Summary Generate token after providing good credentials
+// @Description Generate token after providing good credentials
+// @Tags Users
+// @Param body body LoginRequest true "Credentials"
+// @Success 200 {object} LoginResponseSuccess
+// @Failure 400 {object} LoginResponseError
+// @Failure 404 {object} LoginResponseError
+// @Router /v1/api/public/auth/login [post]
 func (h *UserHandlers) Login(c *fiber.Ctx) error {
+
 	// Parse body
 	credentials := new(LoginRequest)
 	if err := c.BodyParser(credentials); err != nil {
-		return err
+		return c.Status(fiber.StatusBadRequest).JSON(LoginResponseError{
+			Message: err.Error(),
+		})
 	}
 	// Call service
 	status, token, err := h.userService.Login(credentials.Email, credentials.Password)
 	if err != nil {
-		return c.Status(status).JSON(fiber.Map{
-			"message": err.Error(),
+		return c.Status(status).JSON(LoginResponseError{
+			Message: err.Error(),
 		})
 	}
 	// Return token
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"token": token,
+	return c.Status(fiber.StatusOK).JSON(LoginResponseSuccess{
+		Token: token,
 	})
 }
 
 // ------- REGISTER -------
-
 type RegisterRequest struct {
 	Email           string `json:"email"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmPassword"`
 }
+type RegisterResponseError struct {
+	Message string `json:"message"`
+}
 
+// Register ... Create a new user
+// @Summary Create a new user
+// @Description Create a new user
+// @Tags Users
+// @Param body body RegisterRequest true "Credentials"
+// @Success 201
+// @Failure 400 {object} RegisterResponseError
+// @Router /v1/api/public/auth/register [post]
 func (h *UserHandlers) Register(c *fiber.Ctx) error {
+
 	// Parse body
 	credentials := new(RegisterRequest)
 	if err := c.BodyParser(credentials); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"message": err.Error(),
+		return c.Status(fiber.StatusBadRequest).JSON(RegisterResponseError{
+			Message: err.Error(),
 		})
 	}
 	// Call service
 	status, err := h.userService.Register(credentials.Email, credentials.Password, credentials.ConfirmPassword)
 	if err != nil {
-		return c.Status(status).JSON(fiber.Map{
-			"message": err.Error(),
+		return c.Status(status).JSON(RegisterResponseError{
+			Message: err.Error(),
 		})
 	}
 	// Return created status
@@ -72,18 +101,34 @@ func (h *UserHandlers) Register(c *fiber.Ctx) error {
 }
 
 // ------- GET USER -------
+type GetUserResponseSuccess struct {
+	Data *domain.User `json:"user"`
+}
+type GetUserResponseError struct {
+	Message string `json:"message"`
+}
+
+// Get User ... Retrieve a user
+// @Summary Retrieve a user
+// @Description Retrieve a user
+// @Tags Users
+// @Param id path string true "User ID"
+// @Success 200 {object} GetUserResponseSuccess
+// @Failure 400 {object} RegisterResponseError
+// @Failure 404 {object} RegisterResponseError
+// @Router /v1/api/protected/users/:id [get]
 func (h *UserHandlers) GetUser(c *fiber.Ctx) error {
 	// Get id from params
 	id := c.Params("id")
 	// Call service
 	status, user, err := h.userService.GetUser(id)
 	if err != nil {
-		return c.Status(status).JSON(fiber.Map{
-			"message": err.Error(),
+		return c.Status(status).JSON(GetUserResponseError{
+			Message: err.Error(),
 		})
 	}
 	// Return user
-	return c.Status(status).JSON(fiber.Map{
-		"user": user,
+	return c.Status(status).JSON(GetUserResponseSuccess{
+		Data: user,
 	})
 }
