@@ -12,8 +12,8 @@ type UserHandlers interface {
 }
 
 type UserService interface {
-	Login(email string, password string) (status int, token *string, err error)
-	Register(email string, name string, password string, passwordConfirmation string) (status int, err []error)
+	Login(email string, password string) (status int, token *string, err interface{})
+	Register(email string, name string, password string, confirmPassword string) (status int, err interface{})
 	GetUser(id string) (status int, user *domain.User, err error)
 }
 

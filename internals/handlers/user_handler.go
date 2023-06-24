@@ -28,7 +28,7 @@ type LoginResponseSuccess struct {
 	Token *string `json:"token"`
 }
 type LoginResponseError struct {
-	Message string `json:"message"`
+	Errors interface{} `json:"message"`
 }
 
 // Login ... Generate token after providing good credentials
@@ -46,14 +46,14 @@ func (h *UserHandlers) Login(c *fiber.Ctx) error {
 	credentials := new(LoginRequest)
 	if err := c.BodyParser(credentials); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(LoginResponseError{
-			Message: err.Error(),
+			Errors: err.Error(),
 		})
 	}
 	// Call service
 	status, token, err := h.userService.Login(credentials.Email, credentials.Password)
 	if err != nil {
 		return c.Status(status).JSON(LoginResponseError{
-			Message: err.Error(),
+			Errors: err,
 		})
 	}
 	// Return token
@@ -70,7 +70,7 @@ type RegisterRequest struct {
 	ConfirmPassword string `json:"confirmPassword"`
 }
 type RegisterResponseError struct {
-	Errors []string `json:"errors"`
+	Errors interface{} `json:"errors"`
 }
 
 // Register ... Create a new user
@@ -91,13 +91,9 @@ func (h *UserHandlers) Register(c *fiber.Ctx) error {
 		})
 	}
 	// Call service
-	if status, err := h.userService.Register(credentials.Email, credentials.Name, credentials.Password, credentials.ConfirmPassword); len(err) > 0 {
-		errors := []string{}
-		for _, e := range err {
-			errors = append(errors, e.Error())
-		}
+	if status, err := h.userService.Register(credentials.Email, credentials.Name, credentials.Password, credentials.ConfirmPassword); err != nil {
 		return c.Status(status).JSON(RegisterResponseError{
-			Errors: errors,
+			Errors: err,
 		})
 	}
 	// Return created status

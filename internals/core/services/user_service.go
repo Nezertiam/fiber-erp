@@ -2,13 +2,17 @@ package services
 
 import (
 	"errors"
-	"log"
-	"net/mail"
+	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nezertiam/fiber-erp/internals/core/domain"
 	"github.com/nezertiam/fiber-erp/internals/core/ports"
 
+	jtoken "github.com/golang-jwt/jwt/v4"
+	"github.com/golodash/galidator"
 	passwordvalidator "github.com/wagslane/go-password-validator"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -27,69 +31,110 @@ func NewUserService(repository ports.UserRepository) *UserService {
 
 // ------- LOGIN -------
 
-func (s *UserService) Login(email string, password string) (status int, token *string, err error) {
+func (s *UserService) Login(email string, password string) (status int, token *string, err interface{}) {
 	// Validate credentials
-	if email == "" || password == "" {
-		return fiber.StatusBadRequest, nil, errors.New("email and password are required")
+	g := galidator.G()
+	validator := g.ComplexValidator(galidator.Rules{
+		"Email":    g.RuleSet("email").Required().Email(),
+		"Password": g.RuleSet("password").Required().String(),
+	})
+	if err := validator.Validate(map[string]string{
+		"Email":    email,
+		"Password": password,
+	}); err != nil {
+		return fiber.StatusBadRequest, nil, err
 	}
 
 	// Check if user exists
 	user, err := s.userRepository.FindByEmail(email)
 	if err != nil {
-		return fiber.StatusNotFound, nil, err
+		var err [1]string
+		err[0] = "wrong credentials"
+		return fiber.StatusNotFound, nil, map[string]any{
+			"email":    err,
+			"password": err,
+		}
 	}
 
-	// TODO: Check if password is correct
-	log.Println(user.ID)
+	// Check if password is correct
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		var err [1]string
+		err[0] = "wrong credentials"
+		return fiber.StatusNotFound, nil, map[string]any{
+			"email":    err,
+			"password": err,
+		}
+	}
 
-	// Create JWT token
-
-	jwt := "token here pliz"
-	return fiber.StatusOK, &jwt, nil
+	// Create the JWT claims, which includes the user ID and expiry time
+	day := time.Hour * 24
+	secret := os.Getenv("JWT_SECRET")
+	claims := jtoken.MapClaims{
+		"ID":    user.ID,
+		"email": user.Email,
+		"exp":   time.Now().Add(day * 1).Unix(),
+	}
+	// Create token
+	jwt := jtoken.NewWithClaims(jtoken.SigningMethodHS256, claims)
+	// Generate encoded token and send it as response.
+	t, err := jwt.SignedString([]byte(secret))
+	if err != nil {
+		return fiber.StatusInternalServerError, nil, err
+	}
+	return fiber.StatusOK, &t, nil
 }
 
 // ------- REGISTER -------
 
-func (s *UserService) Register(email string, name string, password string, confirmPass string) (status int, err []error) {
-	errorsArray := []error{}
+func (s *UserService) Register(email string, name string, password string, confirmPassword string) (status int, errors interface{}) {
+
 	// Validate fields
-	if email == "" {
-		errorsArray = append(errorsArray, errors.New("email is required"))
+	g := galidator.G()
+	validator := g.ComplexValidator(galidator.Rules{
+		"Email":           g.RuleSet("email").Required().Email(),
+		"Name":            g.RuleSet("name").Required().Min(3).Max(20).String().NonEmpty(),
+		"Password":        g.RuleSet("password").Required().String(),
+		"ConfirmPassword": g.RuleSet("confirmPassword").Required().String(),
+	})
+	if err := validator.Validate(map[string]string{
+		"Email":           strings.Trim(email, " "),
+		"Name":            strings.Trim(name, " "),
+		"Password":        strings.Trim(password, " "),
+		"ConfirmPassword": strings.Trim(confirmPassword, " "),
+	}); err != nil {
+		return fiber.StatusBadRequest, err
 	}
-	if name == "" {
-		errorsArray = append(errorsArray, errors.New("name is required"))
-	}
-	if password == "" {
-		errorsArray = append(errorsArray, errors.New("password is required"))
-	}
-	if confirmPass == "" {
-		errorsArray = append(errorsArray, errors.New("confirmPass is required"))
-	}
-	if _, er := mail.ParseAddress(email); er != nil {
-		errorsArray = append(errorsArray, errors.New("email is not valid")) // Is Email
-	}
-	if password != confirmPass {
-		errorsArray = append(errorsArray, errors.New("passwords do not match"))
-	}
-	if len(errorsArray) > 0 {
-		return fiber.StatusBadRequest, errorsArray
-	}
-	// Check if user exists
-	if _, er := s.userRepository.FindByEmail(email); er == nil {
-		errorsArray = append(errorsArray, errors.New("email already exists"))
-		return fiber.StatusBadRequest, errorsArray
+	// Check if passwords match
+	if password != confirmPassword {
+		var err [1]string
+		err[0] = "Passwords do not match"
+		return fiber.StatusBadRequest, map[string]any{
+			"confirmPassword": err,
+		}
 	}
 	// Check if password is strong enough
 	const minEntropyBits = 60
-	if err := passwordvalidator.Validate("some password", minEntropyBits); err != nil {
-		errorsArray = append(errorsArray, errors.New("password is not strong enough"))
-		return fiber.StatusBadRequest, errorsArray
+	if err := passwordvalidator.Validate(password, minEntropyBits); err != nil {
+		var err [1]string
+		err[0] = "insecure password, try including more special characters, using uppercase letters, using numbers or using a longer password"
+		return fiber.StatusBadRequest, map[string]any{
+			"password": err,
+		}
 	}
+
+	// Check if user exists
+	if _, err := s.userRepository.FindByEmail(email); err == nil {
+		var err [1]string
+		err[0] = "email already exists"
+		return fiber.StatusBadRequest, map[string]any{
+			"email": err,
+		}
+	}
+
 	// Hash password
 	var hash string
 	if bcryptPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost); err != nil {
-		errorsArray = append(errorsArray, errors.New("error hashing password"))
-		return fiber.StatusInternalServerError, errorsArray
+		return fiber.StatusInternalServerError, err
 	} else {
 		hash = string(bcryptPassword)
 	}
@@ -98,6 +143,7 @@ func (s *UserService) Register(email string, name string, password string, confi
 		Email:    email,
 		Password: hash,
 	}
+	fmt.Println(user)
 	// Save user
 	if err := s.userRepository.Create(&user); err != nil {
 		return fiber.StatusInternalServerError, nil

@@ -47,8 +47,7 @@ func (s *Server) Initialize() {
 	userRoutes = protected.Group("/users")          // /v1/api/protected/users
 	userRoutes.Get("/{id}", s.userHandlers.GetUser) // /v1/api/protected/users/:id
 
-	err := app.Listen(":8000")
-	if err != nil {
+	if err := app.Listen(":8080"); err != nil {
 		log.Fatal(err)
 	}
 }
