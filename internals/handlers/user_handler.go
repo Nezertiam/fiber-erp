@@ -65,11 +65,12 @@ func (h *UserHandlers) Login(c *fiber.Ctx) error {
 // ------- REGISTER -------
 type RegisterRequest struct {
 	Email           string `json:"email"`
+	Name            string `json:"name"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmPassword"`
 }
 type RegisterResponseError struct {
-	Message string `json:"message"`
+	Errors []string `json:"errors"`
 }
 
 // Register ... Create a new user
@@ -86,14 +87,17 @@ func (h *UserHandlers) Register(c *fiber.Ctx) error {
 	credentials := new(RegisterRequest)
 	if err := c.BodyParser(credentials); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(RegisterResponseError{
-			Message: err.Error(),
+			Errors: []string{err.Error()},
 		})
 	}
 	// Call service
-	status, err := h.userService.Register(credentials.Email, credentials.Password, credentials.ConfirmPassword)
-	if err != nil {
+	if status, err := h.userService.Register(credentials.Email, credentials.Name, credentials.Password, credentials.ConfirmPassword); len(err) > 0 {
+		errors := []string{}
+		for _, e := range err {
+			errors = append(errors, e.Error())
+		}
 		return c.Status(status).JSON(RegisterResponseError{
-			Message: err.Error(),
+			Errors: errors,
 		})
 	}
 	// Return created status

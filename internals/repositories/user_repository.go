@@ -39,3 +39,11 @@ func (r *UserRepository) FindByID(id string) (*domain.User, error) {
 	}
 	return &user, nil
 }
+
+// ------- CREATE -------
+func (r *UserRepository) Create(user *domain.User) error {
+	if err := r.client.Create(user).Error; err != nil {
+		return err
+	}
+	return nil
+}

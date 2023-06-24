@@ -1,15 +1,17 @@
 package domain
 
 type User struct {
-	ID       int
-	Email    string
-	Password string
+	ID       int    `gorm:"primaryKey"`
+	Email    string `gorm:"unique"`
+	Name     string `gorm:"not null"`
+	Password string `gorm:"not null"`
 }
 
-func CreateUser(id int, email string, password string) *User {
+func CreateUser(id int, email string, name string, password string) *User {
 	return &User{
 		ID:       id,
 		Email:    email,
+		Name:     name,
 		Password: password,
 	}
 }

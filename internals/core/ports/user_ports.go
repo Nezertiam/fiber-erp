@@ -13,11 +13,12 @@ type UserHandlers interface {
 
 type UserService interface {
 	Login(email string, password string) (status int, token *string, err error)
-	Register(email string, password string, passwordConfirmation string) (status int, err error)
+	Register(email string, name string, password string, passwordConfirmation string) (status int, err []error)
 	GetUser(id string) (status int, user *domain.User, err error)
 }
 
 type UserRepository interface {
 	FindByEmail(email string) (*domain.User, error)
 	FindByID(id string) (*domain.User, error)
+	Create(user *domain.User) error
 }

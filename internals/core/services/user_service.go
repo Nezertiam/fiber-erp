@@ -3,10 +3,14 @@ package services
 import (
 	"errors"
 	"log"
+	"net/mail"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nezertiam/fiber-erp/internals/core/domain"
 	"github.com/nezertiam/fiber-erp/internals/core/ports"
+
+	passwordvalidator "github.com/wagslane/go-password-validator"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -46,29 +50,58 @@ func (s *UserService) Login(email string, password string) (status int, token *s
 
 // ------- REGISTER -------
 
-func (s *UserService) Register(email string, password string, confirmPass string) (status int, err error) {
-	// Validate not empty
-	if email == "" || password == "" || confirmPass == "" {
-		return fiber.StatusBadRequest, errors.New("email and password are required")
+func (s *UserService) Register(email string, name string, password string, confirmPass string) (status int, err []error) {
+	errorsArray := []error{}
+	// Validate fields
+	if email == "" {
+		errorsArray = append(errorsArray, errors.New("email is required"))
 	}
-	// Validate password match
+	if name == "" {
+		errorsArray = append(errorsArray, errors.New("name is required"))
+	}
+	if password == "" {
+		errorsArray = append(errorsArray, errors.New("password is required"))
+	}
+	if confirmPass == "" {
+		errorsArray = append(errorsArray, errors.New("confirmPass is required"))
+	}
+	if _, er := mail.ParseAddress(email); er != nil {
+		errorsArray = append(errorsArray, errors.New("email is not valid")) // Is Email
+	}
 	if password != confirmPass {
-		return fiber.StatusBadRequest, errors.New("passwords do not match")
+		errorsArray = append(errorsArray, errors.New("passwords do not match"))
+	}
+	if len(errorsArray) > 0 {
+		return fiber.StatusBadRequest, errorsArray
 	}
 	// Check if user exists
-	if _, err = s.userRepository.FindByEmail(email); err == nil {
-		return fiber.StatusBadRequest, errors.New("user already exists")
+	if _, er := s.userRepository.FindByEmail(email); er == nil {
+		errorsArray = append(errorsArray, errors.New("email already exists"))
+		return fiber.StatusBadRequest, errorsArray
+	}
+	// Check if password is strong enough
+	const minEntropyBits = 60
+	if err := passwordvalidator.Validate("some password", minEntropyBits); err != nil {
+		errorsArray = append(errorsArray, errors.New("password is not strong enough"))
+		return fiber.StatusBadRequest, errorsArray
+	}
+	// Hash password
+	var hash string
+	if bcryptPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost); err != nil {
+		errorsArray = append(errorsArray, errors.New("error hashing password"))
+		return fiber.StatusInternalServerError, errorsArray
+	} else {
+		hash = string(bcryptPassword)
 	}
 	// Create user
-	// user := domain.User{
-	// 	Email:    email,
-	// 	Password: password,
-	// }
+	user := domain.User{
+		Email:    email,
+		Password: hash,
+	}
 	// Save user
-	// TODO: Implement save user in repository
-	// if err = s.userRepository.Save(&user); err != nil {
-	// 	return fiber.StatusInternalServerError, nil, err
-	// }
+	if err := s.userRepository.Create(&user); err != nil {
+		return fiber.StatusInternalServerError, nil
+	}
 	return fiber.StatusCreated, nil
 }
 
