@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -47,7 +48,8 @@ func (s *Server) Initialize() {
 	userRoutes = protected.Group("/users")          // /v1/api/protected/users
 	userRoutes.Get("/{id}", s.userHandlers.GetUser) // /v1/api/protected/users/:id
 
-	if err := app.Listen(":8080"); err != nil {
+	server_port := os.Getenv("SERVER_PORT")
+	if err := app.Listen(fmt.Sprintf(":%s", server_port)); err != nil {
 		log.Fatal(err)
 	}
 }
