@@ -31,7 +31,7 @@ func NewUserService(repository ports.UserRepository) *UserService {
 
 // ------- LOGIN -------
 
-func (s *UserService) Login(email string, password string) (status int, token *string, err interface{}) {
+func (s *UserService) Login(email string, password string) (status int, token *string, user *domain.User, err interface{}) {
 	// Validate credentials
 	g := galidator.G()
 	validator := g.ComplexValidator(galidator.Rules{
@@ -42,15 +42,15 @@ func (s *UserService) Login(email string, password string) (status int, token *s
 		"Email":    email,
 		"Password": password,
 	}); err != nil {
-		return fiber.StatusBadRequest, nil, err
+		return fiber.StatusBadRequest, nil, nil, err
 	}
 
 	// Check if user exists
-	user, err := s.userRepository.FindByEmail(email)
+	user, err = s.userRepository.FindByEmail(email)
 	if err != nil {
 		var err [1]string
 		err[0] = "wrong credentials"
-		return fiber.StatusNotFound, nil, map[string]any{
+		return fiber.StatusNotFound, nil, nil, map[string]any{
 			"email":    err,
 			"password": err,
 		}
@@ -60,7 +60,7 @@ func (s *UserService) Login(email string, password string) (status int, token *s
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		var err [1]string
 		err[0] = "wrong credentials"
-		return fiber.StatusNotFound, nil, map[string]any{
+		return fiber.StatusNotFound, nil, nil, map[string]any{
 			"email":    err,
 			"password": err,
 		}
@@ -79,9 +79,9 @@ func (s *UserService) Login(email string, password string) (status int, token *s
 	// Generate encoded token and send it as response.
 	t, err := jwt.SignedString([]byte(secret))
 	if err != nil {
-		return fiber.StatusInternalServerError, nil, err
+		return fiber.StatusInternalServerError, nil, nil, err
 	}
-	return fiber.StatusOK, &t, nil
+	return fiber.StatusOK, &t, user, nil
 }
 
 // ------- REGISTER -------

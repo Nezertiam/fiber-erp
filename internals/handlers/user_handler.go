@@ -25,7 +25,8 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 type LoginResponseSuccess struct {
-	Token *string `json:"token"`
+	Token *string      `json:"token"`
+	User  *domain.User `json:"user"`
 }
 type LoginResponseError struct {
 	Errors interface{} `json:"message"`
@@ -50,7 +51,7 @@ func (h *UserHandlers) Login(c *fiber.Ctx) error {
 		})
 	}
 	// Call service
-	status, token, err := h.userService.Login(credentials.Email, credentials.Password)
+	status, token, user, err := h.userService.Login(credentials.Email, credentials.Password)
 	if err != nil {
 		return c.Status(status).JSON(LoginResponseError{
 			Errors: err,
@@ -59,6 +60,7 @@ func (h *UserHandlers) Login(c *fiber.Ctx) error {
 	// Return token
 	return c.Status(fiber.StatusOK).JSON(LoginResponseSuccess{
 		Token: token,
+		User:  user,
 	})
 }
 

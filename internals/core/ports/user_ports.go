@@ -12,7 +12,7 @@ type UserHandlers interface {
 }
 
 type UserService interface {
-	Login(email string, password string) (status int, token *string, err interface{})
+	Login(email string, password string) (status int, token *string, user *domain.User, err interface{})
 	Register(email string, name string, password string, confirmPassword string) (status int, err interface{})
 	GetUser(id string) (status int, user *domain.User, err error)
 }

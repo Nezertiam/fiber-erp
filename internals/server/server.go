@@ -33,20 +33,20 @@ func (s *Server) Initialize() {
 	app.Get("/swagger/*", swagger.HandlerDefault) // default
 
 	// ----- v1 api -----
-	v1 := app.Group("/v1")
+	v1 := app.Group("/v1/api")
 	v1.Get("/health", HealthCheck)
 
 	// PUBLIC ROUTES
-	public := v1.Group("/api/public")                     // /v1/api/public
+	public := v1.Group("public")                          // /v1/api/public
 	userRoutes := public.Group("/auth")                   // /v1/api/public/auth
 	userRoutes.Post("/login", s.userHandlers.Login)       // /v1/api/public/auth/login
 	userRoutes.Post("/register", s.userHandlers.Register) // /v1/api/public/auth/register
 
 	// PROTECTED ROUTES
 	jwt := s.middlewares.NewAuthMiddleware(os.Getenv("JWT_SECRET"))
-	protected := v1.Group("/api/protected", jwt)    // /v1/api/protected
-	userRoutes = protected.Group("/users")          // /v1/api/protected/users
-	userRoutes.Get("/{id}", s.userHandlers.GetUser) // /v1/api/protected/users/:id
+	protected := v1.Group("/protected", jwt)       // /v1/api/protected
+	userRoutes = protected.Group("/users")         // /v1/api/protected/users
+	userRoutes.Get("/:id", s.userHandlers.GetUser) // /v1/api/protected/users/:id
 
 	server_port := os.Getenv("SERVER_PORT")
 	if err := app.Listen(fmt.Sprintf(":%s", server_port)); err != nil {
