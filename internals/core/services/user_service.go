@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -143,7 +142,6 @@ func (s *UserService) Register(email string, name string, password string, confi
 		Email:    email,
 		Password: hash,
 	}
-	fmt.Println(user)
 	// Save user
 	if err := s.userRepository.Create(&user); err != nil {
 		return fiber.StatusInternalServerError, nil

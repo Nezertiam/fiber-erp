@@ -9,6 +9,7 @@ type UserHandlers interface {
 	Login(c *fiber.Ctx) error
 	Register(c *fiber.Ctx) error
 	GetUser(c *fiber.Ctx) error
+	GetMe(c *fiber.Ctx) error
 }
 
 type UserService interface {

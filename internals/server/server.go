@@ -46,6 +46,7 @@ func (s *Server) Initialize() {
 	jwt := s.middlewares.NewAuthMiddleware(os.Getenv("JWT_SECRET"))
 	protected := v1.Group("/protected", jwt)       // /v1/api/protected
 	userRoutes = protected.Group("/users")         // /v1/api/protected/users
+	userRoutes.Get("/me", s.userHandlers.GetMe)    // /v1/api/protected/users/me
 	userRoutes.Get("/:id", s.userHandlers.GetUser) // /v1/api/protected/users/:id
 
 	server_port := os.Getenv("SERVER_PORT")

@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"fmt"
+
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/nezertiam/fiber-erp/internals/core/domain"
 	"github.com/nezertiam/fiber-erp/internals/core/ports"
 
@@ -122,6 +125,33 @@ type GetUserResponseError struct {
 func (h *UserHandlers) GetUser(c *fiber.Ctx) error {
 	// Get id from params
 	id := c.Params("id")
+	// Call service
+	status, user, err := h.userService.GetUser(id)
+	if err != nil {
+		return c.Status(status).JSON(GetUserResponseError{
+			Message: err.Error(),
+		})
+	}
+	// Return user
+	return c.Status(status).JSON(GetUserResponseSuccess{
+		Data: user,
+	})
+}
+
+// ------- GET ME -------
+// Get Me ... Retrieve the current user
+// @Summary Retrieve the current user
+// @Description Retrieve the current user
+// @Tags Users
+// @Success 200 {object} GetUserResponseSuccess
+// @Failure 400 {object} GetUserResponseError
+// @Failure 404 {object} GetUserResponseError
+// @Router /v1/api/protected/users/me [get]
+func (h *UserHandlers) GetMe(c *fiber.Ctx) error {
+	// Get id from token claims
+	token := c.Locals("user").(*jwt.Token)
+	claims := token.Claims.(jwt.MapClaims)
+	id := fmt.Sprintf("%v", claims["ID"])
 	// Call service
 	status, user, err := h.userService.GetUser(id)
 	if err != nil {
